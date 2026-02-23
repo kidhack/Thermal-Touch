@@ -1,7 +1,23 @@
+/**
+ * ControlPanel — floating control palette for adjusting effect parameters.
+ *
+ * Positioned in the upper-left corner with a frosted-glass style.
+ * Adapts its color scheme (dark/light) based on the active palette's
+ * background color. Collapsible to stay out of the way.
+ *
+ * Controls:
+ *   - Color: dropdown to pick a palette (Thermal, Night Vision, etc.)
+ *   - Brush: slider for the brush disc radius (2–200 px)
+ *   - Hardness: segmented slider (5% steps) controlling edge softness
+ *   - Glow: stepped slider for max glow radius (0, 1x–16x, ∞)
+ *   - Rate: slider for heat accumulation/decay speed (10–100%)
+ */
+
 import { useState } from 'react';
 import { Github, ChevronDown, ChevronUp } from 'lucide-react';
 import { palettes, type PaletteKey } from './colorPalettes';
 
+/** Glow multiplier steps — multiples of brush radius, plus "off" and "unlimited". */
 const GLOW_STEPS = [
   { label: '0', value: 0 },
   { label: '1x', value: 1 },
@@ -25,6 +41,7 @@ interface ControlPanelProps {
   onBurnSpeedChange: (val: number) => void;
 }
 
+/** True if the palette uses a dark background (black). */
 function isDarkPalette(key: PaletteKey): boolean {
   return palettes[key]?.background === '#000000';
 }
@@ -44,6 +61,7 @@ export default function ControlPanel({
   const [collapsed, setCollapsed] = useState(false);
   const dark = isDarkPalette(palette);
 
+  // Adaptive styling: swap between light and dark text/borders
   const textColor = dark ? 'text-white' : 'text-gray-900';
   const textMuted = dark ? 'text-white/60' : 'text-gray-500';
   const borderColor = dark ? 'border-white/15' : 'border-black/10';
@@ -56,7 +74,7 @@ export default function ControlPanel({
 
   const glowIndex = GLOW_STEPS.findIndex((s) => s.value === glowMultiplier);
 
-  // Convert bleedRadius (0 = hard, max = soft) to slider (left=soft, right=hard)
+  // Hardness is the inverse of bleedRadius: high hardness = low bleed
   const maxBleed = 60;
   const bleedSliderVal = maxBleed - bleedRadius;
 
@@ -65,7 +83,7 @@ export default function ControlPanel({
       className={`fixed top-4 left-4 z-50 rounded-xl border ${borderColor} ${bgPanel} ${textColor} select-none`}
       style={{ width: 260 }}
     >
-      {/* Header */}
+      {/* Collapsible Header */}
       <button
         onClick={() => setCollapsed(!collapsed)}
         className={`w-full flex items-center justify-between px-4 py-3 ${textColor}`}
@@ -79,7 +97,7 @@ export default function ControlPanel({
       {!collapsed && (
         <>
           <div className={`border-t ${borderColor} px-4 py-3 space-y-4`}>
-            {/* Color Palette */}
+            {/* Color Palette Dropdown */}
             <div>
               <label className={`block text-xs ${textMuted} mb-1`}>Color</label>
               <select
@@ -96,10 +114,10 @@ export default function ControlPanel({
               </select>
             </div>
 
-            {/* Brush Size */}
+            {/* Brush Radius Slider (2–200px) */}
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className={`text-xs ${textMuted}`}>Brush Size</label>
+                <label className={`text-xs ${textMuted}`}>Brush</label>
                 <span className={`text-xs ${textMuted} tabular-nums`}>
                   {brushRadius}px
                 </span>
@@ -114,26 +132,28 @@ export default function ControlPanel({
               />
             </div>
 
-            {/* Bleed (Soft <-> Hard) */}
+            {/* Hardness Slider (5–100% in 5% increments) */}
             <div>
-              <label className={`block text-xs ${textMuted} mb-1`}>Bleed</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className={`text-xs ${textMuted}`}>Hardness</label>
+                <span className={`text-xs ${textMuted} tabular-nums`}>
+                  {Math.round((bleedSliderVal / maxBleed) * 100)}%
+                </span>
+              </div>
               <input
                 type="range"
-                min={0}
-                max={maxBleed}
-                value={bleedSliderVal}
+                min={1}
+                max={20}
+                step={1}
+                value={Math.max(1, Math.round((bleedSliderVal / maxBleed) * 20))}
                 onChange={(e) =>
-                  onBleedRadiusChange(maxBleed - Number(e.target.value))
+                  onBleedRadiusChange(maxBleed - (Number(e.target.value) / 20) * maxBleed)
                 }
                 className={`w-full h-1 rounded-full appearance-none ${sliderTrack} [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md`}
               />
-              <div className={`flex justify-between text-[10px] ${textMuted} mt-0.5`}>
-                <span>Soft</span>
-                <span>Hard</span>
-              </div>
             </div>
 
-            {/* Glow Size */}
+            {/* Glow Radius Slider (0, 1x, 2x, 4x, 8x, 16x, ∞) */}
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className={`text-xs ${textMuted}`}>Glow</label>
@@ -154,18 +174,19 @@ export default function ControlPanel({
               />
             </div>
 
-            {/* Burn Speed */}
+            {/* Rate Slider (10–100% in 10% increments) */}
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className={`text-xs ${textMuted}`}>Burn Speed</label>
+                <label className={`text-xs ${textMuted}`}>Rate</label>
                 <span className={`text-xs ${textMuted} tabular-nums`}>
                   {Math.round(burnSpeed * 100)}%
                 </span>
               </div>
               <input
                 type="range"
-                min={0}
+                min={10}
                 max={100}
+                step={10}
                 value={Math.round(burnSpeed * 100)}
                 onChange={(e) => onBurnSpeedChange(Number(e.target.value) / 100)}
                 className={`w-full h-1 rounded-full appearance-none ${sliderTrack} [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md`}
@@ -173,7 +194,7 @@ export default function ControlPanel({
             </div>
           </div>
 
-          {/* Footer */}
+          {/* Footer with GitHub link and attribution */}
           <div
             className={`border-t ${borderColor} px-4 py-2.5 flex items-center justify-between`}
           >

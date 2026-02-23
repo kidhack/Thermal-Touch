@@ -1,3 +1,14 @@
+/**
+ * App — root component for Thermal Touch.
+ *
+ * Composes the full-screen heat canvas with the floating control panel.
+ * Manages the shared state for all effect parameters (palette, brush
+ * radius, hardness, glow, rate) and passes them to both child components.
+ *
+ * Shows a one-time hint ("Move your cursor to begin") that dismisses
+ * on the first mouse or touch interaction.
+ */
+
 import { useState, useEffect } from 'react';
 import HeatBackground from './HeatBackground';
 import ControlPanel from './ControlPanel';
@@ -6,11 +17,12 @@ import type { PaletteKey } from './colorPalettes';
 export default function App() {
   const [palette, setPalette] = useState<PaletteKey>('thermal');
   const [brushRadius, setBrushRadius] = useState(40);
-  const [bleedRadius, setBleedRadius] = useState(16);
+  const [bleedRadius, setBleedRadius] = useState(30);
   const [glowMultiplier, setGlowMultiplier] = useState(Infinity);
   const [burnSpeed, setBurnSpeed] = useState(0.5);
   const [showHint, setShowHint] = useState(true);
 
+  // Dismiss the hint on first interaction
   useEffect(() => {
     const dismiss = () => setShowHint(false);
     window.addEventListener('mousemove', dismiss, { once: true });
@@ -21,6 +33,7 @@ export default function App() {
     };
   }, []);
 
+  // Determine text color for the hint overlay based on palette background
   const isDark =
     palette === 'thermal' ||
     palette === 'nightVision' ||
@@ -29,6 +42,7 @@ export default function App() {
 
   return (
     <>
+      {/* Full-screen heat simulation canvas */}
       <HeatBackground
         palette={palette}
         brushRadius={brushRadius}
@@ -37,6 +51,7 @@ export default function App() {
         burnSpeed={burnSpeed}
       />
 
+      {/* Floating control panel (upper-left) */}
       <ControlPanel
         palette={palette}
         brushRadius={brushRadius}
@@ -50,7 +65,7 @@ export default function App() {
         onBurnSpeedChange={setBurnSpeed}
       />
 
-      {/* First-interaction hint */}
+      {/* First-interaction hint — fades out after first mouse or touch input */}
       {showHint && (
         <div
           className={`fixed inset-0 z-40 flex items-center justify-center pointer-events-none transition-opacity duration-1000 ${

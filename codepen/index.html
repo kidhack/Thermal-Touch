@@ -5,15 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Thermal Touch</title>
 <style>
+/*
+ * Thermal Touch — Self-contained CodePen version
+ *
+ * This file is a standalone implementation of the Thermal Touch heat
+ * effect using vanilla HTML/CSS/JS. It mirrors the React version but
+ * requires no build tools or dependencies. Paste it directly into
+ * CodePen or open it in any browser.
+ */
+
+/* ─── Reset ─────────────────────────────────────────────────────────── */
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { width: 100%; height: 100%; overflow: hidden; }
 body { background: #000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+
+/* ─── Full-screen heat canvas ───────────────────────────────────────── */
 
 canvas#heat {
   position: fixed; top: 0; left: 0;
   width: 100vw; height: 100vh;
   z-index: 0; image-rendering: auto; touch-action: none;
 }
+
+/* ─── First-interaction hint ────────────────────────────────────────── */
 
 #hint {
   position: fixed; inset: 0; z-index: 40;
@@ -23,6 +38,8 @@ canvas#heat {
 }
 #hint span { font-size: 18px; letter-spacing: 0.04em; color: rgba(255,255,255,0.3); }
 #hint.hidden { opacity: 0; }
+
+/* ─── Control panel (frosted glass) ─────────────────────────────────── */
 
 #panel {
   position: fixed; top: 16px; left: 16px; z-index: 50;
@@ -38,21 +55,25 @@ canvas#heat {
   background: rgba(255,255,255,0.4);
 }
 
+/* Panel header (collapsible toggle) */
 #panel-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 16px; cursor: pointer;
 }
 #panel-header span { font-weight: 600; font-size: 13px; letter-spacing: 0.04em; }
 
+/* Panel body (controls area) */
 #panel-body { border-top: 1px solid rgba(255,255,255,0.15); padding: 12px 16px; }
 #panel.light-mode #panel-body { border-top-color: rgba(0,0,0,0.1); }
 
+/* Individual control rows */
 .ctrl { margin-bottom: 14px; }
 .ctrl:last-child { margin-bottom: 0; }
 .ctrl-label { font-size: 11px; opacity: 0.6; margin-bottom: 4px; }
 .ctrl-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .ctrl-row .val { font-size: 11px; opacity: 0.6; font-variant-numeric: tabular-nums; }
 
+/* Dropdown select */
 select {
   width: 100%; padding: 6px 8px; border-radius: 6px;
   border: 1px solid rgba(255,255,255,0.15);
@@ -62,6 +83,7 @@ select {
 select option { background: #1a1a1a; color: #fff; }
 #panel.light-mode select { border-color: rgba(0,0,0,0.1); background: rgba(0,0,0,0.05); }
 
+/* Range sliders */
 input[type=range] {
   -webkit-appearance: none; appearance: none;
   width: 100%; height: 4px; border-radius: 4px;
@@ -76,8 +98,7 @@ input[type=range]::-webkit-slider-thumb {
 }
 #panel.light-mode input[type=range]::-webkit-slider-thumb { background: #333; }
 
-.soft-hard { display: flex; justify-content: space-between; font-size: 10px; opacity: 0.5; margin-top: 2px; }
-
+/* Panel footer (GitHub link + attribution) */
 #panel-footer {
   border-top: 1px solid rgba(255,255,255,0.15);
   padding: 10px 16px; display: flex; align-items: center; justify-content: space-between;
@@ -97,6 +118,7 @@ input[type=range]::-webkit-slider-thumb {
 
 <div id="hint"><span>Move your cursor to begin</span></div>
 
+<!-- Control Panel -->
 <div id="panel">
   <div id="panel-header">
     <span>Thermal Touch</span>
@@ -108,21 +130,20 @@ input[type=range]::-webkit-slider-thumb {
       <select id="palette-select"></select>
     </div>
     <div class="ctrl">
-      <div class="ctrl-row"><span class="ctrl-label">Brush Size</span><span class="val" id="brush-val">40px</span></div>
+      <div class="ctrl-row"><span class="ctrl-label">Brush</span><span class="val" id="brush-val">40px</span></div>
       <input type="range" id="brush-slider" min="2" max="200" value="40" />
     </div>
     <div class="ctrl">
-      <div class="ctrl-label">Bleed</div>
-      <input type="range" id="bleed-slider" min="0" max="60" value="44" />
-      <div class="soft-hard"><span>Soft</span><span>Hard</span></div>
+      <div class="ctrl-row"><span class="ctrl-label">Hardness</span><span class="val" id="hardness-val">50%</span></div>
+      <input type="range" id="bleed-slider" min="1" max="20" step="1" value="10" />
     </div>
     <div class="ctrl">
       <div class="ctrl-row"><span class="ctrl-label">Glow</span><span class="val" id="glow-val">∞</span></div>
       <input type="range" id="glow-slider" min="0" max="6" step="1" value="6" />
     </div>
     <div class="ctrl">
-      <div class="ctrl-row"><span class="ctrl-label">Burn Speed</span><span class="val" id="burn-val">50%</span></div>
-      <input type="range" id="burn-slider" min="0" max="100" value="50" />
+      <div class="ctrl-row"><span class="ctrl-label">Rate</span><span class="val" id="burn-val">50%</span></div>
+      <input type="range" id="burn-slider" min="10" max="100" step="10" value="50" />
     </div>
   </div>
   <div id="panel-footer">
@@ -135,7 +156,33 @@ input[type=range]::-webkit-slider-thumb {
 </div>
 
 <script>
-// ─── Palette Definitions ───
+/**
+ * Thermal Touch — Vanilla JS heat diffusion effect.
+ *
+ * This is a self-contained version of the React app designed for
+ * CodePen compatibility. All logic (palettes, brush kernel, heat
+ * simulation, rendering) is inline below with no external dependencies.
+ *
+ * Architecture:
+ *   1. Palette definitions → buildLUT() → 256-entry color lookup table
+ *   2. Brush kernel → precomputed circular weight map
+ *   3. Animation loop: sample → diffuse → paint → decay → render
+ */
+
+// ═══════════════════════════════════════════════════════════════════════
+// PALETTE DEFINITIONS
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Each palette has:
+//   - name: display name for the dropdown
+//   - bg: hex background color
+//   - stops: array of { pos, r, g, b } defining the color gradient
+//   - cycling (optional): when true, heat wraps through the spectrum
+//
+// Non-cycling palettes clamp heat to [0, 1].
+// Cycling palettes (rainbow) let heat grow unbounded; the LUT index
+// wraps via modulo so colors cycle continuously.
+
 const PALETTES = {
   thermal: {
     name: 'Thermal', bg: '#000000',
@@ -149,10 +196,10 @@ const PALETTES = {
   thermalLight: {
     name: 'Thermal Light', bg: '#ffffff',
     stops: [
-      {pos:0,r:255,g:255,b:255},{pos:.1,r:230,g:220,b:240},{pos:.2,r:210,g:190,b:230},
-      {pos:.3,r:200,g:170,b:220},{pos:.4,r:220,g:160,b:200},{pos:.5,r:230,g:150,b:170},
-      {pos:.6,r:240,g:160,b:140},{pos:.7,r:245,g:180,b:120},{pos:.8,r:250,g:200,b:130},
-      {pos:.9,r:250,g:220,b:160},{pos:1,r:255,g:240,b:180}
+      {pos:0,r:255,g:255,b:255},{pos:.1,r:255,g:240,b:180},{pos:.2,r:250,g:220,b:160},
+      {pos:.3,r:250,g:200,b:130},{pos:.4,r:245,g:180,b:120},{pos:.5,r:240,g:160,b:140},
+      {pos:.6,r:230,g:130,b:180},{pos:.7,r:215,g:135,b:215},{pos:.8,r:195,g:145,b:235},
+      {pos:.9,r:200,g:165,b:240},{pos:1,r:220,g:195,b:245}
     ]
   },
   nightVision: {
@@ -164,22 +211,26 @@ const PALETTES = {
       {pos:.9,r:120,g:250,b:100},{pos:1,r:180,g:255,b:160}
     ]
   },
+  // Full-spectrum hue rotation. First/last stops match (magenta) for seamless wrapping.
   rainbowDark: {
-    name: 'Rainbow Dark', bg: '#000000',
+    name: 'Rainbow Dark', bg: '#000000', cycling: true,
     stops: [
-      {pos:0,r:0,g:0,b:0},{pos:.1,r:80,g:0,b:120},{pos:.2,r:40,g:0,b:200},
-      {pos:.3,r:0,g:60,b:220},{pos:.4,r:0,g:160,b:180},{pos:.5,r:0,g:200,b:60},
-      {pos:.6,r:80,g:220,b:0},{pos:.7,r:200,g:220,b:0},{pos:.8,r:255,g:160,b:0},
-      {pos:.9,r:255,g:60,b:0},{pos:1,r:255,g:40,b:40}
+      {pos:0,r:255,g:0,b:115},{pos:.08,r:192,g:6,b:234},{pos:.16,r:126,g:61,b:255},
+      {pos:.24,r:97,g:97,b:255},{pos:.32,r:78,g:166,b:255},{pos:.40,r:0,g:199,b:166},
+      {pos:.48,r:0,g:255,b:85},{pos:.56,r:85,g:255,b:0},{pos:.64,r:170,g:255,b:0},
+      {pos:.72,r:229,g:229,b:26},{pos:.80,r:255,g:170,b:0},{pos:.88,r:255,g:85,b:0},
+      {pos:.93,r:255,g:61,b:61},{pos:1,r:255,g:0,b:115}
     ]
   },
+  // Pastel version of rainbowDark (70% blended toward white).
   rainbowLight: {
-    name: 'Rainbow Light', bg: '#ffffff',
+    name: 'Rainbow Light', bg: '#ffffff', cycling: true,
     stops: [
-      {pos:0,r:255,g:255,b:255},{pos:.1,r:230,g:210,b:240},{pos:.2,r:200,g:200,b:250},
-      {pos:.3,r:180,g:220,b:250},{pos:.4,r:180,g:240,b:230},{pos:.5,r:180,g:245,b:200},
-      {pos:.6,r:210,g:245,b:180},{pos:.7,r:250,g:240,b:180},{pos:.8,r:255,g:220,b:180},
-      {pos:.9,r:255,g:200,b:190},{pos:1,r:255,g:190,b:200}
+      {pos:0,r:255,g:140,b:192},{pos:.08,r:227,g:143,b:246},{pos:.16,r:197,g:168,b:255},
+      {pos:.24,r:184,g:184,b:255},{pos:.32,r:175,g:215,b:255},{pos:.40,r:140,g:230,b:215},
+      {pos:.48,r:140,g:255,b:179},{pos:.56,r:179,g:255,b:140},{pos:.64,r:217,g:255,b:140},
+      {pos:.72,r:243,g:243,b:152},{pos:.80,r:255,g:217,b:140},{pos:.88,r:255,g:179,b:140},
+      {pos:.93,r:255,g:168,b:168},{pos:1,r:255,g:140,b:192}
     ]
   },
   synthwave: {
@@ -193,44 +244,86 @@ const PALETTES = {
   }
 };
 
+// ═══════════════════════════════════════════════════════════════════════
+// CONSTANTS & STATE
+// ═══════════════════════════════════════════════════════════════════════
+
+/** Glow multiplier steps — multiples of brush radius. */
 const GLOW_STEPS = [0, 1, 2, 4, 8, 16, Infinity];
 const GLOW_LABELS = ['0', '1x', '2x', '4x', '8x', '16x', '∞'];
 const TARGET_FPS = 60;
 const DIFFUSION_FACTOR = 0.5;
 
-// ─── State ───
+// Mutable state (updated by UI controls)
 let currentPalette = 'thermal';
 let brushRadius = 40;
 let maxBleed = 60;
-let bleedSliderVal = 44; // inverted: high = hard
-let glowIndex = 6;
+let bleedSliderVal = 30;  // Inverted: higher value = harder brush
+let glowIndex = 6;        // Default: ∞ (unlimited glow)
 let burnSpeed = 0.5;
 
+/** Get current bleed radius from the inverted slider value. */
 function getBleedRadius() { return maxBleed - bleedSliderVal; }
+
+/** Get current glow multiplier from the step index. */
 function getGlowMultiplier() { return GLOW_STEPS[glowIndex]; }
+
 function isMobile() { return 'ontouchstart' in window || navigator.maxTouchPoints > 0 || window.innerWidth < 768; }
 function getPixelScale() { return isMobile() ? 4 : 2; }
 function getDiffusionIters() { return isMobile() ? 4 : 8; }
 
-// ─── LUT Builder ───
-function buildLUT(stops) {
+// ═══════════════════════════════════════════════════════════════════════
+// LUT BUILDER
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Build a 256-entry ABGR color lookup table from palette stops.
+ *
+ * For cycling palettes, the first 40 entries (FADE_IN) smoothly
+ * blend from the background into the palette's first stop, creating
+ * a soft glow edge. The remaining 216 entries map one full color cycle.
+ *
+ * @param {Array} stops   - Color stops with { pos, r, g, b }
+ * @param {boolean} cycling - Whether the palette wraps continuously
+ * @param {string} bg     - Hex background color for fade-in blending
+ * @returns {Uint32Array}  - 256-entry packed ABGR pixel values
+ */
+function buildLUT(stops, cycling, bg) {
+  bg = bg || '#000000';
+  const bgHex = bg.replace('#', '');
+  const bgR = parseInt(bgHex.substring(0, 2), 16);
+  const bgG = parseInt(bgHex.substring(2, 4), 16);
+  const bgB = parseInt(bgHex.substring(4, 6), 16);
+  const FADE_IN = cycling ? 40 : 0;
   const lut = new Uint32Array(256);
   for (let i = 0; i < 256; i++) {
-    const t = i / 255;
-    let lo = stops[0], hi = stops[stops.length - 1];
-    for (let s = 0; s < stops.length - 1; s++) {
-      if (t >= stops[s].pos && t <= stops[s + 1].pos) { lo = stops[s]; hi = stops[s + 1]; break; }
+    let r, g, b;
+    if (i < FADE_IN) {
+      // Fade-in: blend from background toward the first color stop
+      const fadeT = i / FADE_IN;
+      r = Math.round(bgR + (stops[0].r - bgR) * fadeT);
+      g = Math.round(bgG + (stops[0].g - bgG) * fadeT);
+      b = Math.round(bgB + (stops[0].b - bgB) * fadeT);
+    } else {
+      // Color region: linear interpolation between surrounding stops
+      const t = cycling ? (i - FADE_IN) / (255 - FADE_IN) : i / 255;
+      let lo = stops[0], hi = stops[stops.length - 1];
+      for (let s = 0; s < stops.length - 1; s++) {
+        if (t >= stops[s].pos && t <= stops[s + 1].pos) { lo = stops[s]; hi = stops[s + 1]; break; }
+      }
+      const range = hi.pos - lo.pos;
+      const frac = range > 0 ? (t - lo.pos) / range : 0;
+      r = Math.round(lo.r + (hi.r - lo.r) * frac);
+      g = Math.round(lo.g + (hi.g - lo.g) * frac);
+      b = Math.round(lo.b + (hi.b - lo.b) * frac);
     }
-    const range = hi.pos - lo.pos;
-    const frac = range > 0 ? (t - lo.pos) / range : 0;
-    const r = Math.round(lo.r + (hi.r - lo.r) * frac);
-    const g = Math.round(lo.g + (hi.g - lo.g) * frac);
-    const b = Math.round(lo.b + (hi.b - lo.b) * frac);
+    // Pack as ABGR (little-endian) for Uint32Array pixel access
     lut[i] = (255 << 24) | (b << 16) | (g << 8) | r;
   }
   return lut;
 }
 
+/** Convert a hex color to a packed ABGR value for canvas background fills. */
 function bgABGR(hex) {
   const c = hex.replace('#', '');
   const r = parseInt(c.substring(0, 2), 16);
@@ -239,16 +332,39 @@ function bgABGR(hex) {
   return (255 << 24) | (b << 16) | (g << 8) | r;
 }
 
-// ─── Brush Kernel ───
+// ═══════════════════════════════════════════════════════════════════════
+// BRUSH KERNEL
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Build a circular brush kernel as a flat array of (dx, dy, weight) entries.
+ *
+ * The kernel defines how heat is distributed around the brush center:
+ *   - Solid core: full intensity (weight = 1)
+ *   - Fade zone: cubic falloff from core edge to outer rim
+ *
+ * At low hardness, the solid core shrinks toward the center so the
+ * entire disc becomes a smooth gradient.
+ *
+ * @param {number} brushR  - Brush radius in CSS pixels
+ * @param {number} bleedR  - Bleed/fade radius in CSS pixels
+ * @param {number} scale   - Pixel downscale factor
+ */
 function buildKernel(brushR, bleedR, scale) {
   const bGrid = brushR / scale, blGrid = bleedR / scale;
   const total = bGrid + blGrid, ceil = Math.ceil(total);
+  // Past 50% softness, shrink the solid core inward
+  const innerSoft = Math.max(0, (bleedR - 30) / 30);
+  const solidR = bGrid * (1 - innerSoft);
+  const fadeR = total - solidR;
   const entries = [];
   for (let dy = -ceil; dy <= ceil; dy++) {
     for (let dx = -ceil; dx <= ceil; dx++) {
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist <= total) {
-        let w = dist <= bGrid ? 1 : Math.pow(1 - (dist - bGrid) / blGrid, 3);
+        let w;
+        if (dist <= solidR) { w = 1; }
+        else { const t = (dist - solidR) / fadeR; w = Math.pow(1 - t, 3); }
         entries.push(dx, dy, w);
       }
     }
@@ -256,13 +372,24 @@ function buildKernel(brushR, bleedR, scale) {
   return { data: new Float32Array(entries), count: entries.length / 3 };
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// BURN SPEED CONVERSION
+// ═══════════════════════════════════════════════════════════════════════
+
+/** Convert burn speed (0–1) to exponential decay multiplier per frame. */
 function burnDecay(bs) {
   const hlf = 30 * TARGET_FPS * Math.pow(1 - bs, 3) + 1;
   return Math.pow(0.5, 1 / hlf);
 }
+
+/** Convert burn speed (0–1) to per-frame heat accumulation rate. */
 function burnAccum(bs) { return (1 / (15 * TARGET_FPS)) * (0.5 + bs * 2); }
 
-// ─── Populate UI ───
+// ═══════════════════════════════════════════════════════════════════════
+// UI SETUP
+// ═══════════════════════════════════════════════════════════════════════
+
+// Populate the palette dropdown
 const sel = document.getElementById('palette-select');
 for (const [key, pal] of Object.entries(PALETTES)) {
   const opt = document.createElement('option');
@@ -270,7 +397,7 @@ for (const [key, pal] of Object.entries(PALETTES)) {
   sel.appendChild(opt);
 }
 
-// ─── Panel collapse ───
+// Panel collapse toggle
 let collapsed = false;
 const panelBody = document.getElementById('panel-body');
 const panelFooter = document.getElementById('panel-footer');
@@ -282,7 +409,7 @@ document.getElementById('panel-header').addEventListener('click', () => {
   chevron.style.transform = collapsed ? 'rotate(180deg)' : '';
 });
 
-// ─── Light/dark mode toggle for panel ───
+/** Switch panel between dark and light styling based on palette background. */
 function updatePanelTheme() {
   const dark = PALETTES[currentPalette].bg === '#000000';
   document.getElementById('panel').classList.toggle('light-mode', !dark);
@@ -290,7 +417,7 @@ function updatePanelTheme() {
     dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)';
 }
 
-// ─── Hint dismissal ───
+// Dismiss the "Move your cursor" hint on first interaction
 let hintDismissed = false;
 function dismissHint() {
   if (hintDismissed) return;
@@ -300,7 +427,10 @@ function dismissHint() {
 window.addEventListener('mousemove', dismissHint, { once: true });
 window.addEventListener('touchstart', dismissHint, { once: true });
 
-// ─── Heat Engine ───
+// ═══════════════════════════════════════════════════════════════════════
+// HEAT ENGINE SETUP
+// ═══════════════════════════════════════════════════════════════════════
+
 const canvas = document.getElementById('heat');
 const ctx = canvas.getContext('2d', { alpha: false });
 
@@ -308,48 +438,62 @@ let pixelScale = getPixelScale();
 let diffIters = getDiffusionIters();
 let gridW = Math.ceil(window.innerWidth / pixelScale);
 let gridH = Math.ceil(window.innerHeight / pixelScale);
-let heat = new Float32Array(gridW * gridH);
-let heatSwap = new Float32Array(gridW * gridH);
+
+// Core simulation buffers
+let heat = new Float32Array(gridW * gridH);           // Heat intensity per grid cell
+let heatSwap = new Float32Array(gridW * gridH);       // Scratch buffer for diffusion
+let glowMaskGrid = new Float32Array(gridW * gridH);   // Persistent glow visibility mask
 canvas.width = gridW;
 canvas.height = gridH;
 
-let colorLUT = buildLUT(PALETTES[currentPalette].stops);
+// Build initial LUT, background color, and brush kernel
+let colorLUT = buildLUT(PALETTES[currentPalette].stops, !!PALETTES[currentPalette].cycling, PALETTES[currentPalette].bg);
 let bgColor = bgABGR(PALETTES[currentPalette].bg);
 let kernel = buildKernel(brushRadius, getBleedRadius(), pixelScale);
 
+// Pointer state (updated by mouse/touch handlers)
 const pointer = { x: -9999, y: -9999, active: false };
-let lastGx = -9999, lastGy = -9999;
 
+/** Rebuild LUT, background, and kernel when any parameter changes. */
 function rebuildEngine() {
-  colorLUT = buildLUT(PALETTES[currentPalette].stops);
+  colorLUT = buildLUT(PALETTES[currentPalette].stops, !!PALETTES[currentPalette].cycling, PALETTES[currentPalette].bg);
   bgColor = bgABGR(PALETTES[currentPalette].bg);
   document.body.style.background = PALETTES[currentPalette].bg;
   kernel = buildKernel(brushRadius, getBleedRadius(), pixelScale);
   updatePanelTheme();
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// EVENT HANDLERS
+// ═══════════════════════════════════════════════════════════════════════
+
+// Resize: rebuild grid buffers, preserving existing heat data
 window.addEventListener('resize', () => {
   pixelScale = getPixelScale();
   diffIters = getDiffusionIters();
   const nw = Math.ceil(window.innerWidth / pixelScale);
   const nh = Math.ceil(window.innerHeight / pixelScale);
   const nh2 = new Float32Array(nw * nh);
+  const ng = new Float32Array(nw * nh);
   for (let y = 0; y < Math.min(gridH, nh); y++)
-    for (let x = 0; x < Math.min(gridW, nw); x++)
+    for (let x = 0; x < Math.min(gridW, nw); x++) {
       nh2[y * nw + x] = heat[y * gridW + x];
+      ng[y * nw + x] = glowMaskGrid[y * gridW + x];
+    }
   gridW = nw; gridH = nh;
-  heat = nh2; heatSwap = new Float32Array(gridW * gridH);
+  heat = nh2; glowMaskGrid = ng; heatSwap = new Float32Array(gridW * gridH);
   canvas.width = gridW; canvas.height = gridH;
   kernel = buildKernel(brushRadius, getBleedRadius(), pixelScale);
 });
 
+// Pointer tracking
 window.addEventListener('mousemove', e => { pointer.x = e.clientX; pointer.y = e.clientY; pointer.active = true; });
 document.addEventListener('mouseleave', () => { pointer.active = false; });
 canvas.addEventListener('touchstart', e => { if (e.touches.length) { pointer.x = e.touches[0].clientX; pointer.y = e.touches[0].clientY; pointer.active = true; } }, { passive: true });
 canvas.addEventListener('touchmove', e => { e.preventDefault(); if (e.touches.length) { pointer.x = e.touches[0].clientX; pointer.y = e.touches[0].clientY; pointer.active = true; } }, { passive: false });
 canvas.addEventListener('touchend', () => { pointer.active = false; });
 
-// ─── Control bindings ───
+// Control bindings — update state and rebuild as needed
 sel.addEventListener('change', () => { currentPalette = sel.value; rebuildEngine(); });
 document.getElementById('brush-slider').addEventListener('input', e => {
   brushRadius = +e.target.value;
@@ -357,7 +501,8 @@ document.getElementById('brush-slider').addEventListener('input', e => {
   kernel = buildKernel(brushRadius, getBleedRadius(), pixelScale);
 });
 document.getElementById('bleed-slider').addEventListener('input', e => {
-  bleedSliderVal = +e.target.value;
+  bleedSliderVal = (+e.target.value / 20) * maxBleed;
+  document.getElementById('hardness-val').textContent = Math.round((bleedSliderVal / maxBleed) * 100) + '%';
   kernel = buildKernel(brushRadius, getBleedRadius(), pixelScale);
 });
 document.getElementById('glow-slider').addEventListener('input', e => {
@@ -369,7 +514,18 @@ document.getElementById('burn-slider').addEventListener('input', e => {
   document.getElementById('burn-val').textContent = Math.round(burnSpeed * 100) + '%';
 });
 
-// ─── Animation Loop ───
+// ═══════════════════════════════════════════════════════════════════════
+// ANIMATION LOOP
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Each frame:
+//   1. Sample existing heat under the pointer to determine paint intensity
+//   2. Run diffusion passes (heat spreads to neighbors)
+//   3. Paint heat under the pointer using the brush kernel
+//   4. Update the glow mask (if glow is limited)
+//   5. Decay heat and glow when pointer is inactive
+//   6. Render heat values to the canvas via the color LUT
+
 let lastTime = 0, fracIters = 0;
 
 function tick(time) {
@@ -382,26 +538,32 @@ function tick(time) {
   const gx = Math.floor(pointer.x / pixelScale);
   const gy = Math.floor(pointer.y / pixelScale);
 
+  // Glow mask configuration
   const glowMult = getGlowMultiplier();
   const glowMaxGrid = glowMult === Infinity ? Infinity
     : (brushRadius + getBleedRadius() + glowMult * brushRadius) / pixelScale;
   const glowFadeStart = glowMaxGrid > 0 ? glowMaxGrid * 0.7 : 0;
 
-  // Sample under pointer
+  // ── 1. Sample heat under pointer ────────────────────────────────────
+
   let paintVal = 0;
   if (pointer.active) {
     const kd = kernel.data, kc = kernel.count;
     let sum = 0, cnt = 0;
     for (let i = 0; i < kc; i++) {
       const off = i * 3;
-      if (kd[off + 2] < 1) continue;
+      if (kd[off + 2] < 1) continue;  // Only sample solid-core cells
       const sx = gx + (kd[off] | 0), sy = gy + (kd[off + 1] | 0);
       if (sx >= 0 && sx < gridW && sy >= 0 && sy < gridH) { sum += heat[sy * gridW + sx]; cnt++; }
     }
-    paintVal = (cnt > 0 ? sum / cnt : 0) + accum;
+    const rawPaint = (cnt > 0 ? sum / cnt : 0) + accum;
+    const isCycling = !!PALETTES[currentPalette].cycling;
+    // Clamp to 1 for non-cycling; let grow unbounded for cycling palettes
+    paintVal = isCycling ? rawPaint : Math.min(1, rawPaint);
   }
 
-  // Diffusion
+  // ── 2. Diffusion: spread heat to neighboring cells ──────────────────
+
   fracIters += diffIters * dt;
   const passes = Math.floor(fracIters);
   fracIters -= passes;
@@ -423,9 +585,13 @@ function tick(time) {
   }
   if (src !== heat) heat.set(src);
 
-  // Paint
+  const useGlow = glowMaxGrid !== Infinity;
+  const screenDiag = Math.sqrt(gridW * gridW + gridH * gridH);
+  const glowPaintR = useGlow ? Math.min(Math.ceil(glowMaxGrid), Math.ceil(screenDiag)) : 0;
+
+  // ── 3. Paint heat + update glow mask ────────────────────────────────
+
   if (pointer.active) {
-    lastGx = gx; lastGy = gy;
     const kd = kernel.data, kc = kernel.count;
     for (let i = 0; i < kc; i++) {
       const off = i * 3;
@@ -433,43 +599,69 @@ function tick(time) {
       if (px >= 0 && px < gridW && py >= 0 && py < gridH) {
         const idx = py * gridW + px;
         const v = paintVal * kd[off + 2];
-        if (v > heat[idx]) heat[idx] = v;
+        if (v > heat[idx]) heat[idx] = v;  // Max-blend
       }
     }
-  } else {
-    for (let i = 0, len = heat.length; i < len; i++) heat[i] *= decay;
-  }
-
-  // Glow mask
-  if (glowMaxGrid !== Infinity && lastGx > -9999) {
-    for (let y = 0; y < gridH; y++) {
-      for (let x = 0; x < gridW; x++) {
-        const idx = y * gridW + x;
-        if (heat[idx] < 0.001) continue;
-        const dx = x - lastGx, dy2 = y - lastGy;
-        const dist = Math.sqrt(dx * dx + dy2 * dy2);
-        if (dist > glowMaxGrid) heat[idx] = 0;
-        else if (dist > glowFadeStart) {
-          const t = (dist - glowFadeStart) / (glowMaxGrid - glowFadeStart);
-          heat[idx] *= Math.pow(1 - t, 3);
+    // Paint glow mask around the brush position (only when glow is limited)
+    if (useGlow) {
+      const yMin = Math.max(0, gy - glowPaintR);
+      const yMax = Math.min(gridH - 1, gy + glowPaintR);
+      const xMin = Math.max(0, gx - glowPaintR);
+      const xMax = Math.min(gridW - 1, gx + glowPaintR);
+      for (let y2 = yMin; y2 <= yMax; y2++) {
+        const dyM = y2 - gy;
+        for (let x2 = xMin; x2 <= xMax; x2++) {
+          const dxM = x2 - gx;
+          const dist = Math.sqrt(dxM * dxM + dyM * dyM);
+          if (dist <= glowMaxGrid) {
+            const idx = y2 * gridW + x2;
+            let mval = 1;
+            if (dist > glowFadeStart) {
+              const t2 = (dist - glowFadeStart) / (glowMaxGrid - glowFadeStart);
+              mval = Math.pow(1 - t2, 3);  // Cubic fade at glow edge
+            }
+            if (mval > glowMaskGrid[idx]) glowMaskGrid[idx] = mval;
+          }
         }
       }
     }
+  } else {
+    // ── 4. Decay when pointer is inactive ─────────────────────────────
+    for (let i = 0, len = heat.length; i < len; i++) heat[i] *= decay;
+    if (useGlow) {
+      for (let i = 0, len = glowMaskGrid.length; i < len; i++) glowMaskGrid[i] *= decay;
+    }
   }
 
-  // Normalize & render
-  let maxH = 1;
-  for (let i = 0, len = heat.length; i < len; i++) if (heat[i] > maxH) maxH = heat[i];
-  const scale = 255 / maxH;
+  // ── 5. Render: map heat to colors via the LUT ──────────────────────
+
+  const isCyc = !!PALETTES[currentPalette].cycling;
+  const FADE_IN_R = isCyc ? 40 : 0;        // LUT entries reserved for fade-in
+  const COLOR_RNG = 256 - FADE_IN_R;        // Remaining entries for color cycling
   const imgData = ctx.createImageData(gridW, gridH);
   const px32 = new Uint32Array(imgData.data.buffer);
   for (let i = 0, len = heat.length; i < len; i++) {
-    if (heat[i] > 0.002) px32[i] = colorLUT[(heat[i] * scale) | 0];
+    const v = heat[i] * (useGlow ? Math.min(1, glowMaskGrid[i]) : 1);
+    if (v > 0.002) {
+      let idx;
+      if (isCyc) {
+        // Cycling: wrap through color region. >> 2 slows cycling by 4x.
+        const raw = (v * 255) | 0;
+        idx = raw <= FADE_IN_R ? raw : FADE_IN_R + (((raw - FADE_IN_R) >> 2) % COLOR_RNG);
+      } else {
+        idx = Math.min(255, (v * 255) | 0);
+      }
+      px32[i] = colorLUT[idx];
+    }
     else { px32[i] = bgColor; if (heat[i] < 0) heat[i] = 0; }
   }
   ctx.putImageData(imgData, 0, 0);
   requestAnimationFrame(tick);
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════════════════════════════
 
 updatePanelTheme();
 requestAnimationFrame(tick);

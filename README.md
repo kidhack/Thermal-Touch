@@ -27,8 +27,8 @@ Open [http://localhost:5173](http://localhost:5173) in your browser and move you
 Thermal Touch runs a real-time heat diffusion simulation on an HTML5 Canvas:
 
 1. **Brush** — A solid disc paints heat at full intensity wherever the cursor moves.
-2. **Bleed** — A soft transition zone immediately outside the brush fades from full intensity to zero using cubic easing.
-3. **Glow** — Heat diffuses outward over time through iterative neighbor-averaging passes, creating an expanding thermal spread.
+2. **Hardness** — Controls the softness of the brush edge. At 100% the disc has a sharp border; at lower values a cubic-easing gradient blends the disc smoothly into the background.
+3. **Glow** — Heat diffuses outward over time through iterative neighbor-averaging passes, creating an expanding thermal spread. The glow radius can be limited or set to infinite.
 
 Each frame, heat values are mapped through a 256-entry color lookup table (LUT) and rendered via `putImageData`. When the cursor leaves, heat decays exponentially.
 
@@ -41,17 +41,38 @@ The simulation grid runs at half resolution (or quarter on mobile) for performan
 | Palette | Description |
 |---|---|
 | **Thermal** | Black → deep purple → magenta → red → orange → yellow. The classic infrared look. |
-| **Thermal Light** | Same hue progression in pastel tones on a white background. |
+| **Thermal Light** | Reversed hue progression in pastel tones on a white background, with saturated lavender highlights. |
 | **Night Vision** | Black → dark green → bright green. Military night-vision aesthetic. |
-| **Rainbow Dark** | Full saturated rainbow spectrum on black. |
-| **Rainbow Light** | Pastel rainbow on white. |
+| **Rainbow Dark** | Full saturated spectrum cycling from magenta through the full hue wheel on black. |
+| **Rainbow Light** | Vibrant pastel rainbow on white. |
 | **Synthwave** | Deep purple → teal → hot pink on black. Retro neon vibes. |
+
+Rainbow palettes are **cycling** — heat values grow unbounded and the color index wraps, so the spectrum continuously rotates as you keep painting in one spot.
+
+---
+
+## Project Structure
+
+```
+Thermal-Touch/
+├── src/
+│   ├── main.tsx              # React entry point
+│   ├── App.tsx               # Root component, state management
+│   ├── HeatBackground.tsx    # Canvas heat simulation + rendering
+│   ├── ControlPanel.tsx      # Floating UI controls
+│   ├── colorPalettes.ts      # Palette definitions + LUT builder
+│   └── index.css             # Tailwind base styles
+├── codepen/
+│   └── index.html            # Standalone vanilla JS version (no dependencies)
+├── package.json
+└── README.md
+```
 
 ---
 
 ## Usage (React)
 
-The `HeatBackground` component can be used in any React project:
+The `HeatBackground` component can be dropped into any React project:
 
 ```tsx
 import HeatBackground from './HeatBackground';
@@ -61,7 +82,7 @@ function App() {
     <HeatBackground
       palette="thermal"
       brushRadius={40}
-      bleedRadius={16}
+      bleedRadius={30}
       glowMultiplier={Infinity}
       burnSpeed={0.5}
     />
@@ -74,10 +95,10 @@ function App() {
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `palette` | `string` | `'thermal'` | Color palette key. One of: `thermal`, `thermalLight`, `nightVision`, `rainbowDark`, `rainbowLight`, `synthwave`. |
-| `brushRadius` | `number` | `40` | Radius of the solid disc in pixels. Range: 2–200. |
-| `bleedRadius` | `number` | `16` | Width of the soft fade band past the brush edge in pixels. 0 = hard edge, higher = softer. Range: 0–60. |
-| `glowMultiplier` | `number` | `Infinity` | Max diffusion spread as a multiplier of brush radius. Values: `0`, `1`, `2`, `4`, `8`, `16`, `Infinity`. |
-| `burnSpeed` | `number` | `0.5` | Decay speed from 0 (very slow, heat lingers ~30s) to 1 (nearly instant fade). |
+| `brushRadius` | `number` | `40` | Radius of the brush disc in CSS pixels (2–200). |
+| `bleedRadius` | `number` | `30` | Softness of the brush edge in pixels. `0` = hard edge, `60` = fully soft gradient. Maps inversely to the "Hardness" slider in the UI. |
+| `glowMultiplier` | `number` | `Infinity` | Max diffusion spread as a multiple of brush radius. Values: `0`, `1`, `2`, `4`, `8`, `16`, `Infinity`. |
+| `burnSpeed` | `number` | `0.5` | Heat accumulation and decay speed. `0` = very slow (~30s half-life), `1` = nearly instant fade. |
 
 ---
 
@@ -105,20 +126,25 @@ The [`codepen/index.html`](codepen/index.html) file is a fully self-contained ve
 
 ---
 
-## Configuration Reference
+## Controls
 
-| Parameter | Min | Max | Default | Unit |
-|---|---|---|---|---|
-| Brush Size | 2 | 200 | 40 | px |
-| Bleed | 0 (hard) | 60 (soft) | 16 | px |
-| Glow | 0 | ∞ | ∞ | × brush radius |
-| Burn Speed | 0% (slow) | 100% (instant) | 50% | — |
+| Control | Range | Default | Description |
+|---|---|---|---|
+| Color | Dropdown | Thermal | Choose a color palette |
+| Brush | 2–200 px | 40 px | Radius of the brush disc |
+| Hardness | 5–100% | 50% | Edge softness (low = soft gradient, high = sharp edge) |
+| Glow | 0 – ∞ | ∞ | Max spread distance as a multiple of brush radius |
+| Rate | 10–100% | 50% | How fast heat accumulates and decays |
 
 ---
 
 ## Mobile Support
 
-Touch input is fully supported. On mobile devices, the simulation automatically runs at lower resolution (4x downscale instead of 2x) and fewer diffusion passes for smooth performance.
+Touch input is fully supported. On mobile devices the simulation automatically:
+
+- Runs at 4x downscale (instead of 2x on desktop) for smooth frame rates
+- Reduces diffusion passes from 8 to 4 per frame
+- Disables default touch scrolling on the canvas
 
 ---
 
