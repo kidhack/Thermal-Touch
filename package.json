@@ -1,0 +1,33 @@
+{
+  "name": "thermal-touch",
+  "version": "1.0.0",
+  "description": "An interactive canvas-based heat diffusion effect that responds to mouse and touch input",
+  "private": false,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kidhack/Thermal-Touch.git"
+  },
+  "author": "Kidhack",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "lucide-react": "0.522.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.2.0",
+    "tailwindcss": "3.4.17",
+    "autoprefixer": "latest",
+    "postcss": "latest"
+  }
+}

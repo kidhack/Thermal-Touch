@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Thermal Touch</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body { background: #000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+
+canvas#heat {
+  position: fixed; top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  z-index: 0; image-rendering: auto; touch-action: none;
+}
+
+#hint {
+  position: fixed; inset: 0; z-index: 40;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+#hint span { font-size: 18px; letter-spacing: 0.04em; color: rgba(255,255,255,0.3); }
+#hint.hidden { opacity: 0; }
+
+#panel {
+  position: fixed; top: 16px; left: 16px; z-index: 50;
+  width: 260px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  color: #fff; user-select: none;
+  font-size: 13px;
+}
+#panel.light-mode {
+  color: #111; border-color: rgba(0,0,0,0.1);
+  background: rgba(255,255,255,0.4);
+}
+
+#panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; cursor: pointer;
+}
+#panel-header span { font-weight: 600; font-size: 13px; letter-spacing: 0.04em; }
+
+#panel-body { border-top: 1px solid rgba(255,255,255,0.15); padding: 12px 16px; }
+#panel.light-mode #panel-body { border-top-color: rgba(0,0,0,0.1); }
+
+.ctrl { margin-bottom: 14px; }
+.ctrl:last-child { margin-bottom: 0; }
+.ctrl-label { font-size: 11px; opacity: 0.6; margin-bottom: 4px; }
+.ctrl-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.ctrl-row .val { font-size: 11px; opacity: 0.6; font-variant-numeric: tabular-nums; }
+
+select {
+  width: 100%; padding: 6px 8px; border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.1); color: inherit;
+  font-size: 13px; outline: none; cursor: pointer;
+}
+select option { background: #1a1a1a; color: #fff; }
+#panel.light-mode select { border-color: rgba(0,0,0,0.1); background: rgba(0,0,0,0.05); }
+
+input[type=range] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 4px; border-radius: 4px;
+  background: rgba(255,255,255,0.2); outline: none;
+}
+#panel.light-mode input[type=range] { background: rgba(0,0,0,0.15); }
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #fff; cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+#panel.light-mode input[type=range]::-webkit-slider-thumb { background: #333; }
+
+.soft-hard { display: flex; justify-content: space-between; font-size: 10px; opacity: 0.5; margin-top: 2px; }
+
+#panel-footer {
+  border-top: 1px solid rgba(255,255,255,0.15);
+  padding: 10px 16px; display: flex; align-items: center; justify-content: space-between;
+}
+#panel.light-mode #panel-footer { border-top-color: rgba(0,0,0,0.1); }
+#panel-footer a {
+  font-size: 11px; opacity: 0.6; color: inherit; text-decoration: none; transition: opacity 0.2s;
+}
+#panel-footer a:hover { opacity: 1; }
+#panel-footer .gh { display: flex; align-items: center; gap: 6px; }
+#panel-footer .gh svg { width: 14px; height: 14px; fill: currentColor; }
+</style>
+</head>
+<body>
+
+<canvas id="heat"></canvas>
+
+<div id="hint"><span>Move your cursor to begin</span></div>
+
+<div id="panel">
+  <div id="panel-header">
+    <span>Thermal Touch</span>
+    <svg id="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+  </div>
+  <div id="panel-body">
+    <div class="ctrl">
+      <div class="ctrl-label">Color</div>
+      <select id="palette-select"></select>
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-label">Brush Size</span><span class="val" id="brush-val">40px</span></div>
+      <input type="range" id="brush-slider" min="2" max="200" value="40" />
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-label">Bleed</div>
+      <input type="range" id="bleed-slider" min="0" max="60" value="44" />
+      <div class="soft-hard"><span>Soft</span><span>Hard</span></div>
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-label">Glow</span><span class="val" id="glow-val">∞</span></div>
+      <input type="range" id="glow-slider" min="0" max="6" step="1" value="6" />
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-label">Burn Speed</span><span class="val" id="burn-val">50%</span></div>
+      <input type="range" id="burn-slider" min="0" max="100" value="50" />
+    </div>
+  </div>
+  <div id="panel-footer">
+    <a href="https://github.com/kidhack/Thermal-Touch" target="_blank" rel="noopener" class="gh">
+      <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      <span>GitHub</span>
+    </a>
+    <a href="http://www.abl.design" target="_blank" rel="noopener">Built by Kidhack</a>
+  </div>
+</div>
+
+<script>
+// ─── Palette Definitions ───
+const PALETTES = {
+  thermal: {
+    name: 'Thermal', bg: '#000000',
+    stops: [
+      {pos:0,r:0,g:0,b:0},{pos:.1,r:15,g:0,b:50},{pos:.2,r:50,g:0,b:100},
+      {pos:.3,r:100,g:0,b:140},{pos:.4,r:160,g:0,b:150},{pos:.5,r:200,g:0,b:100},
+      {pos:.6,r:230,g:40,b:40},{pos:.7,r:245,g:100,b:0},{pos:.8,r:255,g:160,b:0},
+      {pos:.9,r:255,g:220,b:40},{pos:1,r:255,g:250,b:100}
+    ]
+  },
+  thermalLight: {
+    name: 'Thermal Light', bg: '#ffffff',
+    stops: [
+      {pos:0,r:255,g:255,b:255},{pos:.1,r:230,g:220,b:240},{pos:.2,r:210,g:190,b:230},
+      {pos:.3,r:200,g:170,b:220},{pos:.4,r:220,g:160,b:200},{pos:.5,r:230,g:150,b:170},
+      {pos:.6,r:240,g:160,b:140},{pos:.7,r:245,g:180,b:120},{pos:.8,r:250,g:200,b:130},
+      {pos:.9,r:250,g:220,b:160},{pos:1,r:255,g:240,b:180}
+    ]
+  },
+  nightVision: {
+    name: 'Night Vision', bg: '#000000',
+    stops: [
+      {pos:0,r:0,g:0,b:0},{pos:.1,r:0,g:10,b:0},{pos:.2,r:0,g:30,b:5},
+      {pos:.3,r:0,g:60,b:10},{pos:.4,r:0,g:100,b:15},{pos:.5,r:5,g:140,b:20},
+      {pos:.6,r:10,g:180,b:30},{pos:.7,r:30,g:210,b:40},{pos:.8,r:60,g:235,b:60},
+      {pos:.9,r:120,g:250,b:100},{pos:1,r:180,g:255,b:160}
+    ]
+  },
+  rainbowDark: {
+    name: 'Rainbow Dark', bg: '#000000',
+    stops: [
+      {pos:0,r:0,g:0,b:0},{pos:.1,r:80,g:0,b:120},{pos:.2,r:40,g:0,b:200},
+      {pos:.3,r:0,g:60,b:220},{pos:.4,r:0,g:160,b:180},{pos:.5,r:0,g:200,b:60},
+      {pos:.6,r:80,g:220,b:0},{pos:.7,r:200,g:220,b:0},{pos:.8,r:255,g:160,b:0},
+      {pos:.9,r:255,g:60,b:0},{pos:1,r:255,g:40,b:40}
+    ]
+  },
+  rainbowLight: {
+    name: 'Rainbow Light', bg: '#ffffff',
+    stops: [
+      {pos:0,r:255,g:255,b:255},{pos:.1,r:230,g:210,b:240},{pos:.2,r:200,g:200,b:250},
+      {pos:.3,r:180,g:220,b:250},{pos:.4,r:180,g:240,b:230},{pos:.5,r:180,g:245,b:200},
+      {pos:.6,r:210,g:245,b:180},{pos:.7,r:250,g:240,b:180},{pos:.8,r:255,g:220,b:180},
+      {pos:.9,r:255,g:200,b:190},{pos:1,r:255,g:190,b:200}
+    ]
+  },
+  synthwave: {
+    name: 'Synthwave', bg: '#000000',
+    stops: [
+      {pos:0,r:0,g:0,b:0},{pos:.1,r:20,g:0,b:40},{pos:.2,r:50,g:0,b:80},
+      {pos:.3,r:80,g:0,b:140},{pos:.4,r:120,g:0,b:180},{pos:.5,r:0,g:120,b:160},
+      {pos:.6,r:0,g:180,b:180},{pos:.7,r:200,g:0,b:160},{pos:.8,r:255,g:40,b:120},
+      {pos:.9,r:255,g:100,b:180},{pos:1,r:255,g:180,b:220}
+    ]
+  }
+};
+
+const GLOW_STEPS = [0, 1, 2, 4, 8, 16, Infinity];
+const GLOW_LABELS = ['0', '1x', '2x', '4x', '8x', '16x', '∞'];
+const TARGET_FPS = 60;
+const DIFFUSION_FACTOR = 0.5;
+
+// ─── State ───
+let currentPalette = 'thermal';
+let brushRadius = 40;
+let maxBleed = 60;
+let bleedSliderVal = 44; // inverted: high = hard
+let glowIndex = 6;
+let burnSpeed = 0.5;
+
+function getBleedRadius() { return maxBleed - bleedSliderVal; }
+function getGlowMultiplier() { return GLOW_STEPS[glowIndex]; }
+function isMobile() { return 'ontouchstart' in window || navigator.maxTouchPoints > 0 || window.innerWidth < 768; }
+function getPixelScale() { return isMobile() ? 4 : 2; }
+function getDiffusionIters() { return isMobile() ? 4 : 8; }
+
+// ─── LUT Builder ───
+function buildLUT(stops) {
+  const lut = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255;
+    let lo = stops[0], hi = stops[stops.length - 1];
+    for (let s = 0; s < stops.length - 1; s++) {
+      if (t >= stops[s].pos && t <= stops[s + 1].pos) { lo = stops[s]; hi = stops[s + 1]; break; }
+    }
+    const range = hi.pos - lo.pos;
+    const frac = range > 0 ? (t - lo.pos) / range : 0;
+    const r = Math.round(lo.r + (hi.r - lo.r) * frac);
+    const g = Math.round(lo.g + (hi.g - lo.g) * frac);
+    const b = Math.round(lo.b + (hi.b - lo.b) * frac);
+    lut[i] = (255 << 24) | (b << 16) | (g << 8) | r;
+  }
+  return lut;
+}
+
+function bgABGR(hex) {
+  const c = hex.replace('#', '');
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+  return (255 << 24) | (b << 16) | (g << 8) | r;
+}
+
+// ─── Brush Kernel ───
+function buildKernel(brushR, bleedR, scale) {
+  const bGrid = brushR / scale, blGrid = bleedR / scale;
+  const total = bGrid + blGrid, ceil = Math.ceil(total);
+  const entries = [];
+  for (let dy = -ceil; dy <= ceil; dy++) {
+    for (let dx = -ceil; dx <= ceil; dx++) {
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist <= total) {
+        let w = dist <= bGrid ? 1 : Math.pow(1 - (dist - bGrid) / blGrid, 3);
+        entries.push(dx, dy, w);
+      }
+    }
+  }
+  return { data: new Float32Array(entries), count: entries.length / 3 };
+}
+
+function burnDecay(bs) {
+  const hlf = 30 * TARGET_FPS * Math.pow(1 - bs, 3) + 1;
+  return Math.pow(0.5, 1 / hlf);
+}
+function burnAccum(bs) { return (1 / (15 * TARGET_FPS)) * (0.5 + bs * 2); }
+
+// ─── Populate UI ───
+const sel = document.getElementById('palette-select');
+for (const [key, pal] of Object.entries(PALETTES)) {
+  const opt = document.createElement('option');
+  opt.value = key; opt.textContent = pal.name;
+  sel.appendChild(opt);
+}
+
+// ─── Panel collapse ───
+let collapsed = false;
+const panelBody = document.getElementById('panel-body');
+const panelFooter = document.getElementById('panel-footer');
+const chevron = document.getElementById('chevron');
+document.getElementById('panel-header').addEventListener('click', () => {
+  collapsed = !collapsed;
+  panelBody.style.display = collapsed ? 'none' : '';
+  panelFooter.style.display = collapsed ? 'none' : '';
+  chevron.style.transform = collapsed ? 'rotate(180deg)' : '';
+});
+
+// ─── Light/dark mode toggle for panel ───
+function updatePanelTheme() {
+  const dark = PALETTES[currentPalette].bg === '#000000';
+  document.getElementById('panel').classList.toggle('light-mode', !dark);
+  document.getElementById('hint').querySelector('span').style.color =
+    dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)';
+}
+
+// ─── Hint dismissal ───
+let hintDismissed = false;
+function dismissHint() {
+  if (hintDismissed) return;
+  hintDismissed = true;
+  document.getElementById('hint').classList.add('hidden');
+}
+window.addEventListener('mousemove', dismissHint, { once: true });
+window.addEventListener('touchstart', dismissHint, { once: true });
+
+// ─── Heat Engine ───
+const canvas = document.getElementById('heat');
+const ctx = canvas.getContext('2d', { alpha: false });
+
+let pixelScale = getPixelScale();
+let diffIters = getDiffusionIters();
+let gridW = Math.ceil(window.innerWidth / pixelScale);
+let gridH = Math.ceil(window.innerHeight / pixelScale);
+let heat = new Float32Array(gridW * gridH);
+let heatSwap = new Float32Array(gridW * gridH);
+canvas.width = gridW;
+canvas.height = gridH;
+
+let colorLUT = buildLUT(PALETTES[currentPalette].stops);
+let bgColor = bgABGR(PALETTES[currentPalette].bg);
+let kernel = buildKernel(brushRadius, getBleedRadius(), pixelScale);
+
+const pointer = { x: -9999, y: -9999, active: false };
+let lastGx = -9999, lastGy = -9999;
+
+function rebuildEngine() {
+  colorLUT = buildLUT(PALETTES[currentPalette].stops);
+  bgColor = bgABGR(PALETTES[currentPalette].bg);
+  document.body.style.background = PALETTES[currentPalette].bg;
+  kernel = buildKernel(brushRadius, getBleedRadius(), pixelScale);
+  updatePanelTheme();
+}
+
+window.addEventListener('resize', () => {
+  pixelScale = getPixelScale();
+  diffIters = getDiffusionIters();
+  const nw = Math.ceil(window.innerWidth / pixelScale);
+  const nh = Math.ceil(window.innerHeight / pixelScale);
+  const nh2 = new Float32Array(nw * nh);
+  for (let y = 0; y < Math.min(gridH, nh); y++)
+    for (let x = 0; x < Math.min(gridW, nw); x++)
+      nh2[y * nw + x] = heat[y * gridW + x];
+  gridW = nw; gridH = nh;
+  heat = nh2; heatSwap = new Float32Array(gridW * gridH);
+  canvas.width = gridW; canvas.height = gridH;
+  kernel = buildKernel(brushRadius, getBleedRadius(), pixelScale);
+});
+
+window.addEventListener('mousemove', e => { pointer.x = e.clientX; pointer.y = e.clientY; pointer.active = true; });
+document.addEventListener('mouseleave', () => { pointer.active = false; });
+canvas.addEventListener('touchstart', e => { if (e.touches.length) { pointer.x = e.touches[0].clientX; pointer.y = e.touches[0].clientY; pointer.active = true; } }, { passive: true });
+canvas.addEventListener('touchmove', e => { e.preventDefault(); if (e.touches.length) { pointer.x = e.touches[0].clientX; pointer.y = e.touches[0].clientY; pointer.active = true; } }, { passive: false });
+canvas.addEventListener('touchend', () => { pointer.active = false; });
+
+// ─── Control bindings ───
+sel.addEventListener('change', () => { currentPalette = sel.value; rebuildEngine(); });
+document.getElementById('brush-slider').addEventListener('input', e => {
+  brushRadius = +e.target.value;
+  document.getElementById('brush-val').textContent = brushRadius + 'px';
+  kernel = buildKernel(brushRadius, getBleedRadius(), pixelScale);
+});
+document.getElementById('bleed-slider').addEventListener('input', e => {
+  bleedSliderVal = +e.target.value;
+  kernel = buildKernel(brushRadius, getBleedRadius(), pixelScale);
+});
+document.getElementById('glow-slider').addEventListener('input', e => {
+  glowIndex = +e.target.value;
+  document.getElementById('glow-val').textContent = GLOW_LABELS[glowIndex];
+});
+document.getElementById('burn-slider').addEventListener('input', e => {
+  burnSpeed = +e.target.value / 100;
+  document.getElementById('burn-val').textContent = Math.round(burnSpeed * 100) + '%';
+});
+
+// ─── Animation Loop ───
+let lastTime = 0, fracIters = 0;
+
+function tick(time) {
+  if (lastTime === 0) lastTime = time;
+  const dt = Math.min((time - lastTime) / (1000 / TARGET_FPS), 3);
+  lastTime = time;
+
+  const decay = Math.pow(burnDecay(burnSpeed), dt);
+  const accum = burnAccum(burnSpeed) * dt;
+  const gx = Math.floor(pointer.x / pixelScale);
+  const gy = Math.floor(pointer.y / pixelScale);
+
+  const glowMult = getGlowMultiplier();
+  const glowMaxGrid = glowMult === Infinity ? Infinity
+    : (brushRadius + getBleedRadius() + glowMult * brushRadius) / pixelScale;
+  const glowFadeStart = glowMaxGrid > 0 ? glowMaxGrid * 0.7 : 0;
+
+  // Sample under pointer
+  let paintVal = 0;
+  if (pointer.active) {
+    const kd = kernel.data, kc = kernel.count;
+    let sum = 0, cnt = 0;
+    for (let i = 0; i < kc; i++) {
+      const off = i * 3;
+      if (kd[off + 2] < 1) continue;
+      const sx = gx + (kd[off] | 0), sy = gy + (kd[off + 1] | 0);
+      if (sx >= 0 && sx < gridW && sy >= 0 && sy < gridH) { sum += heat[sy * gridW + sx]; cnt++; }
+    }
+    paintVal = (cnt > 0 ? sum / cnt : 0) + accum;
+  }
+
+  // Diffusion
+  fracIters += diffIters * dt;
+  const passes = Math.floor(fracIters);
+  fracIters -= passes;
+  let src = heat, dst = heatSwap;
+  for (let p = 0; p < passes; p++) {
+    for (let y = 0; y < gridH; y++) {
+      const row = y * gridW;
+      for (let x = 0; x < gridW; x++) {
+        const idx = row + x;
+        const c = src[idx];
+        const l = x > 0 ? src[idx - 1] : c;
+        const r = x < gridW - 1 ? src[idx + 1] : c;
+        const u = y > 0 ? src[idx - gridW] : c;
+        const d = y < gridH - 1 ? src[idx + gridW] : c;
+        dst[idx] = c + ((l + r + u + d) * 0.25 - c) * DIFFUSION_FACTOR;
+      }
+    }
+    const tmp = src; src = dst; dst = tmp;
+  }
+  if (src !== heat) heat.set(src);
+
+  // Paint
+  if (pointer.active) {
+    lastGx = gx; lastGy = gy;
+    const kd = kernel.data, kc = kernel.count;
+    for (let i = 0; i < kc; i++) {
+      const off = i * 3;
+      const px = gx + (kd[off] | 0), py = gy + (kd[off + 1] | 0);
+      if (px >= 0 && px < gridW && py >= 0 && py < gridH) {
+        const idx = py * gridW + px;
+        const v = paintVal * kd[off + 2];
+        if (v > heat[idx]) heat[idx] = v;
+      }
+    }
+  } else {
+    for (let i = 0, len = heat.length; i < len; i++) heat[i] *= decay;
+  }
+
+  // Glow mask
+  if (glowMaxGrid !== Infinity && lastGx > -9999) {
+    for (let y = 0; y < gridH; y++) {
+      for (let x = 0; x < gridW; x++) {
+        const idx = y * gridW + x;
+        if (heat[idx] < 0.001) continue;
+        const dx = x - lastGx, dy2 = y - lastGy;
+        const dist = Math.sqrt(dx * dx + dy2 * dy2);
+        if (dist > glowMaxGrid) heat[idx] = 0;
+        else if (dist > glowFadeStart) {
+          const t = (dist - glowFadeStart) / (glowMaxGrid - glowFadeStart);
+          heat[idx] *= Math.pow(1 - t, 3);
+        }
+      }
+    }
+  }
+
+  // Normalize & render
+  let maxH = 1;
+  for (let i = 0, len = heat.length; i < len; i++) if (heat[i] > maxH) maxH = heat[i];
+  const scale = 255 / maxH;
+  const imgData = ctx.createImageData(gridW, gridH);
+  const px32 = new Uint32Array(imgData.data.buffer);
+  for (let i = 0, len = heat.length; i < len; i++) {
+    if (heat[i] > 0.002) px32[i] = colorLUT[(heat[i] * scale) | 0];
+    else { px32[i] = bgColor; if (heat[i] < 0) heat[i] = 0; }
+  }
+  ctx.putImageData(imgData, 0, 0);
+  requestAnimationFrame(tick);
+}
+
+updatePanelTheme();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
