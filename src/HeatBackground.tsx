@@ -39,7 +39,7 @@ export interface HeatBackgroundProps {
 
 const TARGET_FPS = 60;
 const DIFFUSION_FACTOR = 0.5;           // How much each cell blends toward its neighbors per pass
-const DIFFUSION_ITERS_DESKTOP = 8;      // Diffusion passes per frame on desktop
+const DIFFUSION_ITERS_DESKTOP = 6;      // Diffusion passes (lower for smooth 60fps)
 const DIFFUSION_ITERS_MOBILE = 4;       // Fewer passes on mobile for performance
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -53,9 +53,9 @@ function isMobile(): boolean {
   );
 }
 
-/** Desktop renders at native resolution, mobile at 3x downscale for performance. */
+/** Resolution scale: mobile 3x downscale, desktop 2x for smooth 60fps in Chrome/Safari. */
 function getPixelScale(): number {
-  return isMobile() ? 3 : 1;
+  return isMobile() ? 3 : 2;
 }
 
 // ─── Brush Kernel ────────────────────────────────────────────────────────────
@@ -171,7 +171,7 @@ export default function HeatBackground({
 
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d', { alpha: false });
+    const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
     if (!ctx) return;
 
     const pixelScale = getPixelScale();

@@ -268,8 +268,8 @@ function getBleedRadius() { return maxBleed - bleedSliderVal; }
 function getGlowMultiplier() { return GLOW_STEPS[glowIndex]; }
 
 function isMobile() { return 'ontouchstart' in window || navigator.maxTouchPoints > 0 || window.innerWidth < 768; }
-function getPixelScale() { return isMobile() ? 3 : 1; }
-function getDiffusionIters() { return isMobile() ? 4 : 8; }
+function getPixelScale() { return isMobile() ? 3 : 2; }
+function getDiffusionIters() { return isMobile() ? 4 : 6; }
 
 // ═══════════════════════════════════════════════════════════════════════
 // LUT BUILDER
@@ -431,7 +431,7 @@ window.addEventListener('touchstart', dismissHint, { once: true });
 // ═══════════════════════════════════════════════════════════════════════
 
 const canvas = document.getElementById('heat');
-const ctx = canvas.getContext('2d', { alpha: false });
+const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
 
 let pixelScale = getPixelScale();
 let baseDiffIters = getDiffusionIters();
