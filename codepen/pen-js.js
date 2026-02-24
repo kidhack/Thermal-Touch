@@ -106,7 +106,8 @@ function getBleedRadius() { return maxBleed - bleedSliderVal; }
 function getGlowMultiplier() { return GLOW_STEPS[glowIndex]; }
 
 function isMobile() { return 'ontouchstart' in window || navigator.maxTouchPoints > 0 || window.innerWidth < 768; }
-function getPixelScale() { return isMobile() ? 3 : 2; }
+function isSafari() { return navigator.vendor === 'Apple Computer, Inc.' || (/Safari/.test(navigator.userAgent) && !/Chrome|Chromium/.test(navigator.userAgent)); }
+function getPixelScale(isCycling) { return isMobile() ? 3 : (isSafari() && isCycling ? 3 : 2); }
 function getDiffusionIters() { return isMobile() ? 4 : 6; }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -271,7 +272,7 @@ window.addEventListener('touchstart', dismissHint, { once: true });
 const canvas = document.getElementById('heat');
 const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
 
-let pixelScale = getPixelScale();
+let pixelScale = getPixelScale(!!PALETTES[currentPalette].cycling);
 let baseDiffIters = getDiffusionIters();
 let gridW = Math.ceil(window.innerWidth / pixelScale);
 let gridH = Math.ceil(window.innerHeight / pixelScale);
@@ -296,22 +297,9 @@ let px32 = new Uint32Array(imgData.data.buffer);
 // Pointer state (updated by mouse/touch handlers)
 const pointer = { x: -9999, y: -9999, active: false };
 
-/** Rebuild LUT, background, and kernel when any parameter changes. */
-function rebuildEngine() {
-  colorLUT = buildLUT(PALETTES[currentPalette].stops, !!PALETTES[currentPalette].cycling, PALETTES[currentPalette].bg);
-  bgColor = bgABGR(PALETTES[currentPalette].bg);
-  document.body.style.background = PALETTES[currentPalette].bg;
-  kernel = buildKernel(brushRadius, getBleedRadius(), pixelScale);
-  updatePanelTheme();
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// EVENT HANDLERS
-// ═══════════════════════════════════════════════════════════════════════
-
-// Resize: rebuild grid buffers, preserving existing heat data
-window.addEventListener('resize', () => {
-  pixelScale = getPixelScale();
+function doResize() {
+  const newScale = getPixelScale(!!PALETTES[currentPalette].cycling);
+  if (newScale !== pixelScale) pixelScale = newScale;
   baseDiffIters = getDiffusionIters();
   const nw = Math.ceil(window.innerWidth / pixelScale);
   const nh = Math.ceil(window.innerHeight / pixelScale);
@@ -328,6 +316,30 @@ window.addEventListener('resize', () => {
   imgData = ctx.createImageData(gridW, gridH);
   px32 = new Uint32Array(imgData.data.buffer);
   kernel = buildKernel(brushRadius, getBleedRadius(), pixelScale);
+}
+
+/** Rebuild LUT, background, and kernel when any parameter changes. */
+function rebuildEngine() {
+  const newScale = getPixelScale(!!PALETTES[currentPalette].cycling);
+  if (newScale !== pixelScale) {
+    pixelScale = newScale;
+    doResize();
+  }
+  colorLUT = buildLUT(PALETTES[currentPalette].stops, !!PALETTES[currentPalette].cycling, PALETTES[currentPalette].bg);
+  bgColor = bgABGR(PALETTES[currentPalette].bg);
+  document.body.style.background = PALETTES[currentPalette].bg;
+  kernel = buildKernel(brushRadius, getBleedRadius(), pixelScale);
+  updatePanelTheme();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// EVENT HANDLERS
+// ═══════════════════════════════════════════════════════════════════════
+
+window.addEventListener('resize', () => {
+  const newScale = getPixelScale(!!PALETTES[currentPalette].cycling);
+  if (newScale !== pixelScale) pixelScale = newScale;
+  doResize();
 });
 
 // Pointer tracking
@@ -404,9 +416,9 @@ function tick(time) {
       const sx = gx + (kd[off] | 0), sy = gy + (kd[off + 1] | 0);
       if (sx >= 0 && sx < gridW && sy >= 0 && sy < gridH) { sum += heat[sy * gridW + sx]; cnt++; }
     }
-    const rawPaint = (cnt > 0 ? sum / cnt : 0) + accum;
     const isCycling = !!PALETTES[currentPalette].cycling;
-    // Clamp to 1 for non-cycling; let grow unbounded for cycling palettes
+    const rate = isCycling ? accum * 2 : accum;
+    const rawPaint = (cnt > 0 ? sum / cnt : 0) + rate;
     paintVal = isCycling ? rawPaint : Math.min(1, rawPaint);
   }
 

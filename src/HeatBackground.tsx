@@ -53,9 +53,19 @@ function isMobile(): boolean {
   );
 }
 
-/** Resolution scale: mobile 3x downscale, desktop 2x for smooth 60fps in Chrome/Safari. */
-function getPixelScale(): number {
-  return isMobile() ? 3 : 2;
+function isSafari(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return (
+    navigator.vendor === 'Apple Computer, Inc.' ||
+    (/Safari/.test(navigator.userAgent) && !/Chrome|Chromium/.test(navigator.userAgent))
+  );
+}
+
+/** Resolution scale. Safari + rainbow uses 3x for performance; else 2x desktop, 3x mobile. */
+function getPixelScale(isCycling: boolean): number {
+  if (isMobile()) return 3;
+  if (isSafari() && isCycling) return 3;
+  return 2;
 }
 
 // ─── Brush Kernel ────────────────────────────────────────────────────────────
@@ -174,7 +184,7 @@ export default function HeatBackground({
     const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
     if (!ctx) return;
 
-    const pixelScale = getPixelScale();
+    const pixelScale = getPixelScale(!!paletteDef.cycling);
     const mobile = isMobile();
     // Scale diffusion passes with burn speed so higher Rate = faster glow spread
     const baseDiffusion = mobile ? DIFFUSION_ITERS_MOBILE : DIFFUSION_ITERS_DESKTOP;
@@ -300,9 +310,9 @@ export default function HeatBackground({
           }
         }
         // Paint intensity = existing heat + accumulation rate
-        // For non-cycling palettes, clamp to 1.0 to prevent normalization issues.
-        // For cycling palettes, let heat grow unbounded for continuous color cycling.
-        const raw = (cnt > 0 ? sum / cnt : 0) + accumRate * dt;
+        // For cycling palettes, use 2x accum rate and let heat grow unbounded.
+        const rate = isCycling ? accumRate * 2 : accumRate;
+        const raw = (cnt > 0 ? sum / cnt : 0) + rate * dt;
         paintIntensity = isCycling ? raw : Math.min(1, raw);
       }
 
