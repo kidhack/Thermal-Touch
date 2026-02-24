@@ -53,9 +53,9 @@ function isMobile(): boolean {
   );
 }
 
-/** Desktop renders at 2x downscale, mobile at 4x for performance. */
+/** Desktop renders at native resolution, mobile at 3x downscale for performance. */
 function getPixelScale(): number {
-  return isMobile() ? 4 : 2;
+  return isMobile() ? 3 : 1;
 }
 
 // ─── Brush Kernel ────────────────────────────────────────────────────────────
@@ -66,12 +66,15 @@ function getPixelScale(): number {
  * The kernel is a list of (dx, dy, weight) entries describing the
  * heat intensity at each grid cell relative to the brush center.
  *
- * Hardness controls the brush's edge softness:
- *   - High hardness (bleedRadius ≈ 0): sharp solid disc with thin fade
- *   - Low hardness (bleedRadius ≈ 60): entire disc is a smooth gradient
- *     from full intensity at center to zero at the outer edge
+ * Hardness controls two zones:
+ *   - Inside the brush disc: at high hardness, intensity is flat (weight=1).
+ *     At low hardness, intensity gently grades from 1.0 at center down to
+ *     a still-visible level at the brush edge — creating a richer gradient
+ *     that shows more of the color spectrum.
+ *   - Outside the brush disc (bleed zone): always fades from the edge
+ *     intensity down to 0 with cubic easing.
  *
- * The fade uses cubic easing: weight = (1 - t)³ for natural falloff.
+ * This keeps visible color all the way to the brush edge at any hardness.
  */
 function buildBrushKernel(
   brushRadius: number,
@@ -84,22 +87,25 @@ function buildBrushKernel(
   const ceil = Math.ceil(totalR);
   const entries: number[] = [];
 
-  // Past 50% softness (bleedRadius > 30), shrink the solid core
-  // so the gradient starts closer to the center
-  const innerSoftness = Math.max(0, (bleedRadius - 30) / 30);
-  const solidCoreR = brushGridR * (1 - innerSoftness);
-  const fadeR = totalR - solidCoreR;
+  // Past 50% softness, introduce an inner gradient within the brush disc.
+  // innerMinWeight is the intensity at the brush edge — always > 0 so
+  // the brush has visible color all the way out.
+  const softness = Math.max(0, (bleedRadius - 30) / 30);
+  const innerMinWeight = 1 - softness * 0.6;
 
   for (let dy = -ceil; dy <= ceil; dy++) {
     for (let dx = -ceil; dx <= ceil; dx++) {
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist <= totalR) {
         let weight: number;
-        if (dist <= solidCoreR) {
-          weight = 1;  // Full intensity inside the solid core
+        if (dist <= brushGridR) {
+          // Inside brush: grade from 1.0 at center to innerMinWeight at edge
+          const t = brushGridR > 0 ? dist / brushGridR : 0;
+          weight = 1 - (1 - innerMinWeight) * t * t;
         } else {
-          const t = (dist - solidCoreR) / fadeR;
-          weight = (1 - t) * (1 - t) * (1 - t);  // Cubic ease-out
+          // Bleed zone: fade from innerMinWeight to 0 with cubic easing
+          const t = bleedGridR > 0 ? (dist - brushGridR) / bleedGridR : 1;
+          weight = innerMinWeight * (1 - t) * (1 - t) * (1 - t);
         }
         entries.push(dx, dy, weight);
       }
@@ -111,13 +117,11 @@ function buildBrushKernel(
 // ─── Burn Speed Conversion ───────────────────────────────────────────────────
 
 /**
- * Convert burn speed (0–1) to a per-frame exponential decay multiplier.
- * At speed 0 the heat half-life is ~30 seconds; at speed 1 it decays instantly.
+ * Fixed per-frame decay multiplier. Decoupled from the Rate slider.
+ * ~30s half-life for non-cycling, ~15s effective for cycling (2x faster).
  */
-function burnSpeedToDecay(burnSpeed: number): number {
-  const halfLifeFrames = 30 * TARGET_FPS * Math.pow(1 - burnSpeed, 3) + 1;
-  return Math.pow(0.5, 1 / halfLifeFrames);
-}
+const DECAY_HALF_LIFE_FRAMES = 60 * TARGET_FPS * Math.pow(0.5, 3) * 4 + 1; // ~1801 frames (~30s)
+const FIXED_DECAY_RATE = Math.pow(0.5, 1 / DECAY_HALF_LIFE_FRAMES);
 
 /**
  * Convert burn speed (0–1) to a per-frame heat accumulation rate.
@@ -172,7 +176,9 @@ export default function HeatBackground({
 
     const pixelScale = getPixelScale();
     const mobile = isMobile();
-    const diffusionIters = mobile ? DIFFUSION_ITERS_MOBILE : DIFFUSION_ITERS_DESKTOP;
+    // Scale diffusion passes with burn speed so higher Rate = faster glow spread
+    const baseDiffusion = mobile ? DIFFUSION_ITERS_MOBILE : DIFFUSION_ITERS_DESKTOP;
+    const diffusionIters = baseDiffusion * (0.5 + burnSpeed * 1.5);
 
     // Heat grid dimensions (downscaled from screen size)
     let gridW = Math.ceil(window.innerWidth / pixelScale);
@@ -186,8 +192,12 @@ export default function HeatBackground({
     canvas.height = gridH;
 
     let kernel = buildBrushKernel(brushRadiusPx, bleedRadiusPx, pixelScale);
-    const decayRate = burnSpeedToDecay(burnSpeed);
     const accumRate = burnSpeedToAccum(burnSpeed);
+
+    // Reusable render buffers — allocated once, recreated only on resize.
+    // Avoids per-frame GC pressure that tanks Safari performance.
+    let imageData = ctx.createImageData(gridW, gridH);
+    let pixels = new Uint32Array(imageData.data.buffer);
 
     // Cycling palette config: determines LUT wrapping behavior
     const isCycling = !!paletteDef.cycling;
@@ -224,6 +234,8 @@ export default function HeatBackground({
       heatSwap = new Float32Array(gridW * gridH);
       canvas.width = gridW;
       canvas.height = gridH;
+      imageData = ctx.createImageData(gridW, gridH);
+      pixels = new Uint32Array(imageData.data.buffer);
     };
 
     // ─── Pointer Event Handlers ──────────────────────────────────────────
@@ -248,6 +260,7 @@ export default function HeatBackground({
     window.addEventListener('resize', onResize);
     window.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseleave', onPointerLeave);
+    window.addEventListener('blur', onPointerLeave);
     canvas.addEventListener('touchmove', onTouchMove, { passive: false });
     canvas.addEventListener('touchstart', onTouchStart, { passive: true });
     canvas.addEventListener('touchend', onPointerLeave);
@@ -321,7 +334,24 @@ export default function HeatBackground({
       }
       if (src !== heat) heat.set(src);
 
-      // ── 3. Paint heat under pointer using the brush kernel ───────────
+      // ── 3. Decay: fade all heat every frame ─────────────────────────
+      // Runs before painting so the brush can replenish the area it covers.
+      // When pointer is inactive, decay faster so the diffused edges contract
+      // quickly instead of lingering.
+      let decay = Math.pow(FIXED_DECAY_RATE, dt * (isCycling ? 2 : 1));
+      if (!ptr.active) decay = Math.pow(decay, 2);  // 2x faster when not painting
+      for (let i = 0, len = heat.length; i < len; i++) {
+        heat[i] *= decay;
+      }
+      if (useGlowMask) {
+        for (let i = 0, len = glowMask.length; i < len; i++) {
+          glowMask[i] *= decay;
+        }
+      }
+
+      // ── 4. Paint heat under pointer using the brush kernel ───────────
+      // Painting after decay means the brush area stays at full intensity
+      // while heat radiates outward and cools at the edges.
 
       if (ptr.active) {
         const kd = kernel.data;
@@ -360,41 +390,23 @@ export default function HeatBackground({
             }
           }
         }
-      } else {
-        // ── 4. Decay: fade heat and glow when pointer is inactive ─────
-        const decay = Math.pow(decayRate, dt);
-        for (let i = 0, len = heat.length; i < len; i++) {
-          heat[i] *= decay;
-        }
-        if (useGlowMask) {
-          const decay2 = Math.pow(decayRate, dt);
-          for (let i = 0, len = glowMask.length; i < len; i++) {
-            glowMask[i] *= decay2;
-          }
-        }
       }
 
       // ── 5. Render: map heat values to colors via the LUT ─────────────
 
-      const imageData = ctx.createImageData(gridW, gridH);
-      const pixels = new Uint32Array(imageData.data.buffer);
       for (let i = 0, len = heat.length; i < len; i++) {
-        // Multiply by glow mask to visually restrict glow to painted areas
         const v = heat[i] * (useGlowMask ? Math.min(1, glowMask[i]) : 1);
-        if (v > 0.002) {
+        const threshold = isCycling ? 0.015 : 0.002;
+        if (v > threshold) {
           let idx: number;
           if (isCycling) {
-            // Cycling palettes: wrap through the color region of the LUT.
-            // The >> 2 (divide by 4) slows cycling speed so color transitions
-            // are gradual rather than rapid.
             const raw = (v * 255) | 0;
             if (raw <= FADE_IN) {
-              idx = raw;  // Still in fade-in zone (soft glow edge)
+              idx = raw;
             } else {
               idx = FADE_IN + (((raw - FADE_IN) >> 2) % COLOR_RANGE);
             }
           } else {
-            // Non-cycling palettes: clamp to LUT range
             idx = Math.min(255, (v * 255) | 0);
           }
           pixels[i] = colorLUT[idx];
@@ -417,6 +429,7 @@ export default function HeatBackground({
       window.removeEventListener('resize', onResize);
       window.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseleave', onPointerLeave);
+      window.removeEventListener('blur', onPointerLeave);
       canvas.removeEventListener('touchmove', onTouchMove);
       canvas.removeEventListener('touchstart', onTouchStart);
       canvas.removeEventListener('touchend', onPointerLeave);

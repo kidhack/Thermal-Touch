@@ -1,0 +1,11 @@
+TITLE:
+Thermal Touch — Interactive Heat Diffusion Effect
+
+DESCRIPTION:
+An interactive canvas-based heat diffusion effect. Move your mouse (or finger on mobile) to paint heat that spreads, glows, and fades in real time. Choose from 6 color palettes including thermal, night vision, rainbow, and synthwave. Adjust brush size, hardness, glow radius, and burn rate with the control panel.
+
+GitHub: https://github.com/kidhack/Thermal-Touch
+Built by ABL — https://www.abl.design
+
+TAGS:
+canvas, heat, diffusion, interactive, animation, mouse, touch, generative, creative-coding, thermal, rainbow, glow, particles, effect, vanilla-js

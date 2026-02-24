@@ -166,6 +166,6 @@ The effect respects the `prefers-reduced-motion` media query. When enabled, the 
 
 ## Credits
 
-Built by [Kidhack](http://www.abl.design)
+Built by [ABL](https://www.abl.design)
 
 Licensed under the [MIT License](LICENSE).

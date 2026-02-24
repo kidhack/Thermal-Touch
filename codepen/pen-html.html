@@ -1,0 +1,39 @@
+<canvas id="heat"></canvas>
+
+<div id="hint"><span>Move your cursor to begin</span></div>
+
+<div id="panel">
+  <div id="panel-header">
+    <span>Thermal Touch</span>
+    <svg id="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+  </div>
+  <div id="panel-body">
+    <div class="ctrl">
+      <div class="ctrl-label">Color</div>
+      <select id="palette-select"></select>
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-label">Brush</span><span class="val" id="brush-val">40px</span></div>
+      <input type="range" id="brush-slider" min="2" max="200" value="40" />
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-label">Hardness</span><span class="val" id="hardness-val">50%</span></div>
+      <input type="range" id="bleed-slider" min="1" max="20" step="1" value="10" />
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-label">Glow</span><span class="val" id="glow-val">∞</span></div>
+      <input type="range" id="glow-slider" min="0" max="6" step="1" value="6" />
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-label">Rate</span><span class="val" id="burn-val">50%</span></div>
+      <input type="range" id="burn-slider" min="10" max="100" step="10" value="50" />
+    </div>
+  </div>
+  <div id="panel-footer">
+    <a href="https://github.com/kidhack/Thermal-Touch" target="_blank" rel="noopener" class="gh">
+      <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      <span>GitHub</span>
+    </a>
+    <a href="https://www.abl.design" target="_blank" rel="noopener">Built by ABL</a>
+  </div>
+</div>

@@ -92,51 +92,49 @@ export const palettes: Record<string, PaletteDefinition> = {
     ],
   },
 
-  // Full-saturation HSL hue rotation. Starts and ends at magenta (FF0073)
-  // for seamless wrapping when heat cycles past 1.0.
+  // Full-saturation hue rotation. Starts and ends at indigo for seamless wrapping.
   rainbowDark: {
     name: 'Rainbow Dark',
     background: '#000000',
     cycling: true,
     stops: [
-      { pos: 0,     r: 255, g: 0,   b: 115 },  // Magenta
-      { pos: 0.08,  r: 192, g: 6,   b: 234 },  // Purple
-      { pos: 0.16,  r: 126, g: 61,  b: 255 },  // Indigo
-      { pos: 0.24,  r: 97,  g: 97,  b: 255 },  // Blue
-      { pos: 0.32,  r: 78,  g: 166, b: 255 },  // Sky blue
-      { pos: 0.40,  r: 0,   g: 199, b: 166 },  // Teal
-      { pos: 0.48,  r: 0,   g: 255, b: 85  },  // Green
-      { pos: 0.56,  r: 85,  g: 255, b: 0   },  // Chartreuse
-      { pos: 0.64,  r: 170, g: 255, b: 0   },  // Lime
-      { pos: 0.72,  r: 229, g: 229, b: 26  },  // Yellow
-      { pos: 0.80,  r: 255, g: 170, b: 0   },  // Orange
-      { pos: 0.88,  r: 255, g: 85,  b: 0   },  // Red-orange
-      { pos: 0.93,  r: 255, g: 61,  b: 61  },  // Red
-      { pos: 1,     r: 255, g: 0,   b: 115 },  // Magenta (wraps to pos 0)
+      { pos: 0,     r: 126, g: 61,  b: 255 },  // Indigo
+      { pos: 0.08,  r: 97,  g: 97,  b: 255 },  // Blue
+      { pos: 0.16,  r: 78,  g: 166, b: 255 },  // Sky blue
+      { pos: 0.24,  r: 0,   g: 199, b: 166 },  // Teal
+      { pos: 0.32,  r: 0,   g: 255, b: 85  },  // Green
+      { pos: 0.40,  r: 85,  g: 255, b: 0   },  // Chartreuse
+      { pos: 0.48,  r: 170, g: 255, b: 0   },  // Lime
+      { pos: 0.56,  r: 229, g: 229, b: 26  },  // Yellow
+      { pos: 0.64,  r: 255, g: 170, b: 0   },  // Orange
+      { pos: 0.72,  r: 255, g: 85,  b: 0   },  // Red-orange
+      { pos: 0.80,  r: 255, g: 61,  b: 61  },  // Red
+      { pos: 0.88,  r: 255, g: 0,   b: 115 },  // Magenta
+      { pos: 0.93,  r: 192, g: 6,   b: 234 },  // Purple
+      { pos: 1,     r: 126, g: 61,  b: 255 },  // Indigo (wraps to pos 0)
     ],
   },
 
   // Pastel version of rainbowDark for white backgrounds.
-  // Each channel is blended 55% toward 255 from the dark version.
   rainbowLight: {
     name: 'Rainbow Light',
     background: '#ffffff',
     cycling: true,
     stops: [
-      { pos: 0,     r: 255, g: 140, b: 192 },
-      { pos: 0.08,  r: 227, g: 143, b: 246 },
-      { pos: 0.16,  r: 197, g: 168, b: 255 },
-      { pos: 0.24,  r: 184, g: 184, b: 255 },
-      { pos: 0.32,  r: 175, g: 215, b: 255 },
-      { pos: 0.40,  r: 140, g: 230, b: 215 },
-      { pos: 0.48,  r: 140, g: 255, b: 179 },
-      { pos: 0.56,  r: 179, g: 255, b: 140 },
-      { pos: 0.64,  r: 217, g: 255, b: 140 },
-      { pos: 0.72,  r: 243, g: 243, b: 152 },
-      { pos: 0.80,  r: 255, g: 217, b: 140 },
-      { pos: 0.88,  r: 255, g: 179, b: 140 },
-      { pos: 0.93,  r: 255, g: 168, b: 168 },
-      { pos: 1,     r: 255, g: 140, b: 192 },
+      { pos: 0,     r: 197, g: 168, b: 255 },  // Indigo
+      { pos: 0.08,  r: 184, g: 184, b: 255 },  // Blue
+      { pos: 0.16,  r: 175, g: 215, b: 255 },  // Sky blue
+      { pos: 0.24,  r: 140, g: 230, b: 215 },  // Teal
+      { pos: 0.32,  r: 140, g: 255, b: 179 },  // Green
+      { pos: 0.40,  r: 179, g: 255, b: 140 },  // Chartreuse
+      { pos: 0.48,  r: 217, g: 255, b: 140 },  // Lime
+      { pos: 0.56,  r: 243, g: 243, b: 152 },  // Yellow
+      { pos: 0.64,  r: 255, g: 217, b: 140 },  // Orange
+      { pos: 0.72,  r: 255, g: 179, b: 140 },  // Red-orange
+      { pos: 0.80,  r: 255, g: 168, b: 168 },  // Red
+      { pos: 0.88,  r: 255, g: 140, b: 192 },  // Magenta
+      { pos: 0.93,  r: 227, g: 143, b: 246 },  // Purple
+      { pos: 1,     r: 197, g: 168, b: 255 },  // Indigo (wraps)
     ],
   },
 

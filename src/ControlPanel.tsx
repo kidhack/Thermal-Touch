@@ -208,12 +208,12 @@ export default function ControlPanel({
               <span>GitHub</span>
             </a>
             <a
-              href="http://www.abl.design"
+              href="https://www.abl.design"
               target="_blank"
               rel="noopener noreferrer"
               className={`text-xs ${textMuted} ${hoverColor} transition-colors`}
             >
-              Built by Kidhack
+              Built by ABL
             </a>
           </div>
         </>
