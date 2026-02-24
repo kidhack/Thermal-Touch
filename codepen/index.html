@@ -484,15 +484,19 @@ function doResize() {
 
 /** Rebuild LUT, background, and kernel when any parameter changes. */
 function rebuildEngine() {
-  const newScale = getPixelScale(!!PALETTES[currentPalette].cycling);
+  const isCycling = !!PALETTES[currentPalette].cycling;
+  const newScale = getPixelScale(isCycling);
   if (newScale !== pixelScale) {
     pixelScale = newScale;
     doResize();
   }
-  colorLUT = buildLUT(PALETTES[currentPalette].stops, !!PALETTES[currentPalette].cycling, PALETTES[currentPalette].bg);
+  colorLUT = buildLUT(PALETTES[currentPalette].stops, isCycling, PALETTES[currentPalette].bg);
   bgColor = bgABGR(PALETTES[currentPalette].bg);
   document.body.style.background = PALETTES[currentPalette].bg;
   kernel = buildKernel(brushRadius, getBleedRadius(), pixelScale);
+  if (!isCycling) {
+    for (let i = 0; i < heat.length; i++) heat[i] = Math.min(1, heat[i]);
+  }
   updatePanelTheme();
 }
 
