@@ -2,7 +2,9 @@
 
 An interactive canvas-based heat diffusion effect that responds to mouse and touch input. Move your cursor (or finger on mobile) to paint heat that spreads, glows, and fades in real time.
 
-<!-- Replace with a screenshot or GIF of the effect -->
+<img width="1006" height="731" alt="thermal" src="https://github.com/user-attachments/assets/0a9ccbe6-0add-48ab-921f-ad6f80479cc4" />
+
+
 <!-- ![Thermal Touch Demo](screenshot.gif) -->
 
 **[Live Demo](#)** · **[CodePen](#)** · **[GitHub](https://github.com/kidhack/Thermal-Touch)**
